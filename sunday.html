@@ -1,60 +1,67 @@
-<!DOCTYPE html> <html lang="nl"> <head> <meta charset="UTF-8"> <title>Sunday Planning System</title> <meta name="viewport" content="width=device-width, initial-scale=1"> <link rel="stylesheet" href="style.css"> </head> <body> <div class="container"> <div class="back-row"> <a href="index.html" class="back-link">← Terug naar overzicht</a> </div>
-<h2 class="page-title">Sunday Planning System</h2>
-<p class="page-subtitle"></p>
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Sunday Planning System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
 
-<form id="planning-form">
-  <input type="hidden" id="planning-id">
+<body>
+<div class="container">
 
-  <div class="form-grid-two">
-    <div>
-      <label for="planning-from">FROM</label>
+  <div class="back-row">
+    <a href="index.html" class="back-link">← Terug naar overzicht</a>
+  </div>
+
+  <h2 class="page-title">Sunday Planning System</h2>
+
+  <form id="planning-form">
+    <input type="hidden" id="planning-id">
+
+    <div class="form-row">
+      <label>From date</label>
       <input type="date" id="planning-from">
     </div>
-    <div>
-      <label for="planning-to">TO (DATES)</label>
+
+    <div class="form-row">
+      <label>To date</label>
       <input type="date" id="planning-to">
     </div>
-  </div>
 
-  <div style="margin-top:16px;">
-    <label for="planning-mission">MISSION</label>
-    <textarea id="planning-mission"></textarea>
-  </div>
-
-  <div class="form-grid-two" style="margin-top:16px;">
-    <div>
-      <label for="planning-goal1">GOAL #1: LEREN CODEREN EN AUTOMATISEREN</label>
-      <textarea id="planning-goal1" placeholder="Taken en doelen voor goal 1"></textarea>
+    <div class="form-row">
+      <label>Mission for this week</label>
+      <textarea id="planning-mission"></textarea>
     </div>
-    <div>
-      <label for="planning-goal2">GOAL #2: FYSIEK EN MENTAAL IN TOPVORM ZIJN</label>
-      <textarea id="planning-goal2" placeholder="Taken en doelen voor goal 2"></textarea>
+
+    <div class="form-row">
+      <label>Goal 1</label>
+      <input type="text" id="planning-goal1">
     </div>
-  </div>
 
-  <div class="form-grid-two" style="margin-top:16px;">
-    <div>
-      <label for="planning-goal3">GOAL #3</label>
-      <textarea id="planning-goal3" placeholder="Taken en doelen voor goal 3"></textarea>
+    <div class="form-row">
+      <label>Goal 2</label>
+      <input type="text" id="planning-goal2">
     </div>
-    <div>
-      <label for="planning-devils">DEVIL'S VORTEX</label>
-      <textarea id="planning-devils" placeholder="Afleiders"></textarea>
+
+    <div class="form-row">
+      <label>Goal 3</label>
+      <input type="text" id="planning-goal3">
     </div>
-  </div>
 
-  <div class="divider"></div>
+    <div class="form-row">
+      <label>Devil's vortex</label>
+      <textarea id="planning-devils"></textarea>
+    </div>
 
-  <p class="quote">"The game is won before it begins, if you plan to win"</p>
-  <p class="quote-author">DARREN HARDY</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Opslaan</button>
+      <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
+    </div>
 
-  <div class="form-actions">
-    <button type="submit" class="btn btn-primary">Opslaan</button>
-    <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
-  </div>
+    <p id="save-status" class="form-note"></p>
 
-  <p class="form-note" id="save-status"></p>
-</form>
+  </form>
 
 </div>
 
@@ -63,120 +70,116 @@
 <script src="firebase-config.js"></script>
 
 <script>
-  const PLANS_KEY = "sps_plans";
 
-  function loadJson(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return [];
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+// --------------------------------------------------
+// UTILITIES
+// --------------------------------------------------
+
+function generateId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function getQueryParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
+// --------------------------------------------------
+// ELEMENTS
+// --------------------------------------------------
+
+const idEl = document.getElementById("planning-id");
+const fromEl = document.getElementById("planning-from");
+const toEl = document.getElementById("planning-to");
+const missionEl = document.getElementById("planning-mission");
+const g1El = document.getElementById("planning-goal1");
+const g2El = document.getElementById("planning-goal2");
+const g3El = document.getElementById("planning-goal3");
+const devilsEl = document.getElementById("planning-devils");
+const statusEl = document.getElementById("save-status");
+
+// --------------------------------------------------
+// LOAD EXISTING PLAN FROM FIRESTORE
+// --------------------------------------------------
+
+async function loadPlanIfExists() {
+  const id = getQueryParam("id");
+  if (!id) return;
+
+  const doc = await db.collection("sunday_plans").doc(id).get();
+
+  if (!doc.exists) return;
+
+  const p = doc.data();
+
+  idEl.value = p.id;
+  fromEl.value = p.fromDate || "";
+  toEl.value = p.toDate || "";
+  missionEl.value = p.mission || "";
+  g1El.value = p.goal1 || "";
+  g2El.value = p.goal2 || "";
+  g3El.value = p.goal3 || "";
+  devilsEl.value = p.devilsVortex || "";
+}
+
+// --------------------------------------------------
+// SAVE PLAN TO FIRESTORE
+// --------------------------------------------------
+
+async function savePlan(plan) {
+  await db.collection("sunday_plans").doc(plan.id).set(plan);
+}
+
+// --------------------------------------------------
+// FORM SUBMIT
+// --------------------------------------------------
+
+document.getElementById("planning-form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const fromDate = fromEl.value;
+  const toDate = toEl.value;
+  const mission = missionEl.value;
+
+  if (!fromDate || !toDate || !mission.trim()) {
+    alert("Vul minimaal from date, to date en mission in.");
+    return;
   }
 
-  function saveJson(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
+  const planId = idEl.value || generateId();
 
-  function generateId() {
-    return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
+  const plan = {
+    id: planId,
+    fromDate,
+    toDate,
+    mission,
+    goal1: g1El.value,
+    goal2: g2El.value,
+    goal3: g3El.value,
+    devilsVortex: devilsEl.value,
+    createdAt: new Date().toISOString()
+  };
 
-  function getQueryParam(name) {
-    const params = new URLSearchParams(window.location.search);
-    return params.get(name);
-  }
+  await savePlan(plan);
 
-  const idInput = document.getElementById("planning-id");
-  const fromInput = document.getElementById("planning-from");
-  const toInput = document.getElementById("planning-to");
-  const missionInput = document.getElementById("planning-mission");
-  const goal1Input = document.getElementById("planning-goal1");
-  const goal2Input = document.getElementById("planning-goal2");
-  const goal3Input = document.getElementById("planning-goal3");
-  const devilsInput = document.getElementById("planning-devils");
-  const statusEl = document.getElementById("save-status");
-  const subtitleEl = document.querySelector(".page-subtitle");
+  idEl.value = planId;
+  statusEl.textContent = "Opgeslagen in Firestore. Je kunt deze week later weer openen via het overzicht.";
+});
 
-  function loadExistingIfNeeded() {
-    const id = getQueryParam("id");
-    if (!id) return;
+// --------------------------------------------------
+// PRINT
+// --------------------------------------------------
 
-    const plans = loadJson(PLANS_KEY);
-    const plan = plans.find(p => p.id === id);
-    if (!plan) return;
+document.getElementById("print-btn").addEventListener("click", () => {
+  window.print();
+});
 
-    idInput.value = plan.id;
-    fromInput.value = plan.fromDate || "";
-    toInput.value = plan.toDate || "";
-    missionInput.value = plan.mission || "";
-    goal1Input.value = plan.goal1 || "";
-    goal2Input.value = plan.goal2 || "";
-    goal3Input.value = plan.goal3 || "";
-    devilsInput.value = plan.devilsVortex || "";
+// --------------------------------------------------
+// INIT
+// --------------------------------------------------
 
-    subtitleEl.textContent = `Bewerken van week ${plan.fromDate} - ${plan.toDate}`;
-  }
+loadPlanIfExists();
 
-  const form = document.getElementById("planning-form");
-
-  form.addEventListener("submit", event => {
-    event.preventDefault();
-
-    const fromDate = fromInput.value;
-    const toDate = toInput.value;
-    const mission = missionInput.value;
-
-    if (!fromDate || !toDate || !mission.trim()) {
-      alert("Vul minimaal from, to en mission in.");
-      return;
-    }
-
-    const plans = loadJson(PLANS_KEY);
-    const existingId = idInput.value || null;
-
-    if (existingId) {
-      const idx = plans.findIndex(p => p.id === existingId);
-      if (idx !== -1) {
-        plans[idx] = {
-          ...plans[idx],
-          fromDate,
-          toDate,
-          mission,
-          goal1: goal1Input.value,
-          goal2: goal2Input.value,
-          goal3: goal3Input.value,
-          devilsVortex: devilsInput.value
-        };
-      }
-    } else {
-      const newId = generateId();
-      const newPlan = {
-        id: newId,
-        fromDate,
-        toDate,
-        mission,
-        goal1: goal1Input.value,
-        goal2: goal2Input.value,
-        goal3: goal3Input.value,
-        devilsVortex: devilsInput.value,
-        createdAt: new Date().toISOString()
-      };
-      plans.unshift(newPlan);
-      idInput.value = newId;
-      subtitleEl.textContent = `Bewerken van week ${fromDate} - ${toDate}`;
-    }
-
-    saveJson(PLANS_KEY, plans);
-    statusEl.textContent = "Opgeslagen. Je kunt deze week later weer openen via het overzicht.";
-  });
-
-  document.getElementById("print-btn").addEventListener("click", () => {
-    window.print();
-  });
-
-  loadExistingIfNeeded();
 </script>
 
 </body>
