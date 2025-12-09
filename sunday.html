@@ -1,0 +1,183 @@
+<!DOCTYPE html> <html lang="nl"> <head> <meta charset="UTF-8"> <title>Sunday Planning System</title> <meta name="viewport" content="width=device-width, initial-scale=1"> <link rel="stylesheet" href="style.css"> </head> <body> <div class="container"> <div class="back-row"> <a href="index.html" class="back-link">← Terug naar overzicht</a> </div>
+<h2 class="page-title">Sunday Planning System</h2>
+<p class="page-subtitle"></p>
+
+<form id="planning-form">
+  <input type="hidden" id="planning-id">
+
+  <div class="form-grid-two">
+    <div>
+      <label for="planning-from">FROM</label>
+      <input type="date" id="planning-from">
+    </div>
+    <div>
+      <label for="planning-to">TO (DATES)</label>
+      <input type="date" id="planning-to">
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <label for="planning-mission">MISSION</label>
+    <textarea id="planning-mission"></textarea>
+  </div>
+
+  <div class="form-grid-two" style="margin-top:16px;">
+    <div>
+      <label for="planning-goal1">GOAL #1: LEREN CODEREN EN AUTOMATISEREN</label>
+      <textarea id="planning-goal1" placeholder="Taken en doelen voor goal 1"></textarea>
+    </div>
+    <div>
+      <label for="planning-goal2">GOAL #2: FYSIEK EN MENTAAL IN TOPVORM ZIJN</label>
+      <textarea id="planning-goal2" placeholder="Taken en doelen voor goal 2"></textarea>
+    </div>
+  </div>
+
+  <div class="form-grid-two" style="margin-top:16px;">
+    <div>
+      <label for="planning-goal3">GOAL #3</label>
+      <textarea id="planning-goal3" placeholder="Taken en doelen voor goal 3"></textarea>
+    </div>
+    <div>
+      <label for="planning-devils">DEVIL'S VORTEX</label>
+      <textarea id="planning-devils" placeholder="Afleiders"></textarea>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="quote">"The game is won before it begins, if you plan to win"</p>
+  <p class="quote-author">DARREN HARDY</p>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Opslaan</button>
+    <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
+  </div>
+
+  <p class="form-note" id="save-status"></p>
+</form>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+  const PLANS_KEY = "sps_plans";
+
+  function loadJson(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveJson(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function generateId() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function getQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
+  const idInput = document.getElementById("planning-id");
+  const fromInput = document.getElementById("planning-from");
+  const toInput = document.getElementById("planning-to");
+  const missionInput = document.getElementById("planning-mission");
+  const goal1Input = document.getElementById("planning-goal1");
+  const goal2Input = document.getElementById("planning-goal2");
+  const goal3Input = document.getElementById("planning-goal3");
+  const devilsInput = document.getElementById("planning-devils");
+  const statusEl = document.getElementById("save-status");
+  const subtitleEl = document.querySelector(".page-subtitle");
+
+  function loadExistingIfNeeded() {
+    const id = getQueryParam("id");
+    if (!id) return;
+
+    const plans = loadJson(PLANS_KEY);
+    const plan = plans.find(p => p.id === id);
+    if (!plan) return;
+
+    idInput.value = plan.id;
+    fromInput.value = plan.fromDate || "";
+    toInput.value = plan.toDate || "";
+    missionInput.value = plan.mission || "";
+    goal1Input.value = plan.goal1 || "";
+    goal2Input.value = plan.goal2 || "";
+    goal3Input.value = plan.goal3 || "";
+    devilsInput.value = plan.devilsVortex || "";
+
+    subtitleEl.textContent = `Bewerken van week ${plan.fromDate} - ${plan.toDate}`;
+  }
+
+  const form = document.getElementById("planning-form");
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const fromDate = fromInput.value;
+    const toDate = toInput.value;
+    const mission = missionInput.value;
+
+    if (!fromDate || !toDate || !mission.trim()) {
+      alert("Vul minimaal from, to en mission in.");
+      return;
+    }
+
+    const plans = loadJson(PLANS_KEY);
+    const existingId = idInput.value || null;
+
+    if (existingId) {
+      const idx = plans.findIndex(p => p.id === existingId);
+      if (idx !== -1) {
+        plans[idx] = {
+          ...plans[idx],
+          fromDate,
+          toDate,
+          mission,
+          goal1: goal1Input.value,
+          goal2: goal2Input.value,
+          goal3: goal3Input.value,
+          devilsVortex: devilsInput.value
+        };
+      }
+    } else {
+      const newId = generateId();
+      const newPlan = {
+        id: newId,
+        fromDate,
+        toDate,
+        mission,
+        goal1: goal1Input.value,
+        goal2: goal2Input.value,
+        goal3: goal3Input.value,
+        devilsVortex: devilsInput.value,
+        createdAt: new Date().toISOString()
+      };
+      plans.unshift(newPlan);
+      idInput.value = newId;
+      subtitleEl.textContent = `Bewerken van week ${fromDate} - ${toDate}`;
+    }
+
+    saveJson(PLANS_KEY, plans);
+    statusEl.textContent = "Opgeslagen. Je kunt deze week later weer openen via het overzicht.";
+  });
+
+  document.getElementById("print-btn").addEventListener("click", () => {
+    window.print();
+  });
+
+  loadExistingIfNeeded();
+</script>
+
+</body>
+</html>

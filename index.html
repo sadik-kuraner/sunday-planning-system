@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekplanning Overzicht</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Weekplanning Overzicht</h1>
+    <p class="subtitle">Kies welk formulier je wil invullen of bekijk je eerdere weken.</p>
+
+    <div class="button-row" style="margin-bottom:16px;">
+      <button type="button" id="export-btn" class="btn btn-secondary">Exporteren</button>
+      <label for="import-file" class="btn btn-secondary">Importeren</label>
+      <input type="file" id="import-file" accept="application/json" style="display:none">
+    </div>
+    <p class="form-note" id="backup-status"></p>
+
+    <div class="cards-row">
+      <div class="card">
+        <div class="card-header-line">
+          <span class="card-icon">📅</span>
+          <span>Sunday Planning System</span>
+        </div>
+        <p class="card-text">
+          Plan je week met missie, doelen en identificeer je afleiders.
+        </p>
+        <div class="button-row">
+          <a href="sunday.html" class="btn btn-primary">Start Planning</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-line">
+          <span class="card-icon">📊</span>
+          <span>Weekly Rhythm Register</span>
+        </div>
+        <p class="card-text">
+          Track je dagelijkse gedragingen en acties gedurende de week.
+        </p>
+        <div class="button-row">
+          <a href="rhythm.html" class="btn btn-primary">Start Tracking</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title-row">
+      <h2>Opgeslagen Sunday Plannings</h2>
+    </div>
+    <div id="planning-list" class="saved-list"></div>
+    <div id="planning-empty" class="saved-empty"></div>
+
+    <div class="section-title-row">
+      <h2>Opgeslagen Rhythm Registers</h2>
+    </div>
+    <div id="rhythm-list" class="saved-list"></div>
+    <div id="rhythm-empty" class="saved-empty"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="firebase-config.js"></script>
+
+  <script>
+
+    const PLANS_KEY = "sps_plans";
+    const RHYTHMS_KEY = "sps_rhythms";
+
+    function loadJson(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        return JSON.parse(raw);
+      } catch {
+        return [];
+      }
+    }
+
+    function formatRange(fromDate, toDate) {
+      if (!fromDate || !toDate) return "";
+      return `Week ${fromDate} - ${toDate}`;
+    }
+
+    function shorten(text, max) {
+      if (!text) return "";
+      if (text.length <= max) return text;
+      return text.slice(0, max) + "…";
+    }
+
+    function renderPlannings() {
+      const list = document.getElementById("planning-list");
+      const empty = document.getElementById("planning-empty");
+      list.innerHTML = "";
+      empty.textContent = "";
+
+      const plans = loadJson(PLANS_KEY);
+      if (plans.length === 0) {
+        empty.textContent = "Nog geen Sunday plannings opgeslagen.";
+        return;
+      }
+
+      plans.forEach(plan => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "saved-card-title";
+        title.textContent = formatRange(plan.fromDate, plan.toDate);
+
+        const sub = document.createElement("div");
+        sub.className = "saved-card-sub";
+        const created = plan.createdAt ? new Date(plan.createdAt).toLocaleString() : "";
+        sub.textContent = created ? `Opgeslagen op ${created}` : "";
+
+        const body = document.createElement("div");
+        body.className = "saved-card-body";
+        body.textContent = shorten(plan.mission || "", 120);
+
+        const btnRow = document.createElement("div");
+        btnRow.className = "button-row";
+
+        const openBtn = document.createElement("a");
+        openBtn.href = `sunday.html?id=${encodeURIComponent(plan.id)}`;
+        openBtn.className = "btn btn-secondary";
+        openBtn.textContent = "Openen";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn btn-ghost";
+        deleteBtn.type = "button";
+        deleteBtn.textContent = "Verwijderen";
+        deleteBtn.addEventListener("click", () => {
+          const confirmed = confirm("Deze planning verwijderen?");
+          if (!confirmed) return;
+          const next = plans.filter(p => p.id !== plan.id);
+          localStorage.setItem(PLANS_KEY, JSON.stringify(next));
+          renderPlannings();
+        });
+
+        btnRow.appendChild(openBtn);
+        btnRow.appendChild(deleteBtn);
+
+        card.appendChild(title);
+        card.appendChild(sub);
+        card.appendChild(body);
+        card.appendChild(btnRow);
+
+        list.appendChild(card);
+      });
+    }
+
+    function renderRhythms() {
+      const list = document.getElementById("rhythm-list");
+      const empty = document.getElementById("rhythm-empty");
+      list.innerHTML = "";
+      empty.textContent = "";
+
+      const rhythms = loadJson(RHYTHMS_KEY);
+      if (rhythms.length === 0) {
+        empty.textContent = "Nog geen rhythm registers opgeslagen.";
+        return;
+      }
+
+      rhythms.forEach(r => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "saved-card-title";
+        title.textContent = formatRange(r.fromDate, r.toDate);
+
+        const sub = document.createElement("div");
+        sub.className = "saved-card-sub";
+        const created = r.createdAt ? new Date(r.createdAt).toLocaleString() : "";
+        const count = r.rows ? r.rows.length : 0;
+        sub.textContent = `${count} gedragingen getrackt` + (created ? ` • opgeslagen op ${created}` : "");
+
+        const btnRow = document.createElement("div");
+        btnRow.className = "button-row";
+
+        const openBtn = document.createElement("a");
+        openBtn.href = `rhythm.html?id=${encodeURIComponent(r.id)}`;
+        openBtn.className = "btn btn-secondary";
+        openBtn.textContent = "Openen";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn btn-ghost";
+        deleteBtn.type = "button";
+        deleteBtn.textContent = "Verwijderen";
+        deleteBtn.addEventListener("click", () => {
+          const confirmed = confirm("Dit rhythm register verwijderen?");
+          if (!confirmed) return;
+          const next = rhythms.filter(x => x.id !== r.id);
+          localStorage.setItem(RHYTHMS_KEY, JSON.stringify(next));
+          renderRhythms();
+        });
+
+        btnRow.appendChild(openBtn);
+        btnRow.appendChild(deleteBtn);
+
+        card.appendChild(title);
+        card.appendChild(sub);
+        card.appendChild(btnRow);
+
+        list.appendChild(card);
+      });
+    }
+
+    function downloadJSON(filename, data) {
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    const exportBtn = document.getElementById("export-btn");
+    const importInput = document.getElementById("import-file");
+    const backupStatus = document.getElementById("backup-status");
+
+    exportBtn.addEventListener("click", () => {
+      const plans = loadJson(PLANS_KEY);
+      const rhythms = loadJson(RHYTHMS_KEY);
+      const data = { plans, rhythms };
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const filename = `sps-backup-${year}-${month}-${day}.json`;
+
+      downloadJSON(filename, data);
+      backupStatus.textContent = "Backup geëxporteerd.";
+    });
+
+    importInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const text = e.target.result;
+          const data = JSON.parse(text);
+
+          if (!data || typeof data !== "object") {
+            throw new Error("Invalid data");
+          }
+
+          const plans = Array.isArray(data.plans) ? data.plans : [];
+          const rhythms = Array.isArray(data.rhythms) ? data.rhythms : [];
+
+          localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+          localStorage.setItem(RHYTHMS_KEY, JSON.stringify(rhythms));
+
+          backupStatus.textContent = "Backup geïmporteerd. Overzicht bijgewerkt.";
+          renderPlannings();
+          renderRhythms();
+        } catch (err) {
+          backupStatus.textContent = "Importeren mislukt. Is dit een geldige SPS-backup?";
+        } finally {
+          importInput.value = "";
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    renderPlannings();
+    renderRhythms();
+  </script>
+</body>
+</html>
