@@ -39,7 +39,19 @@
 </div>
 <script>
 function shorten(t, m) { return t.length <= m ? t : t.slice(0, m) + "…"; }
-function formatRange(a,b){ return a && b ? `Week ${a} – ${b}` : ""; }
+function formatDate(d) {
+  if (!d) return "";
+  const date = new Date(d);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+function formatRange(a, b) {
+  return a && b ? `Week ${formatDate(a)} – ${formatDate(b)}` : "";
+}
+
 function loadPlans() { return JSON.parse(localStorage.getItem("sunday_plans") || "[]"); }
 function loadRhythms() { return JSON.parse(localStorage.getItem("rhythms") || "[]"); }
 function renderPlannings() {
