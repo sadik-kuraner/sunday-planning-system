@@ -6,15 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 <div class="container">
-
   <div class="back-row">
     <a href="index.html" class="back-link">← Terug naar overzicht</a>
   </div>
 
   <h2 class="page-title">Weekly Rhythm Register</h2>
+
+  <p class="quote">
+    "The rhythm of daily action aligned with your goals creates the momentum that separates dreamers from high-performers."
+  </p>
+  <p class="quote-author">DARREN HARDY</p>
 
   <form id="rhythm-form">
     <input type="hidden" id="rhythm-id">
@@ -24,41 +27,44 @@
         <thead>
           <tr>
             <th>BEHAVIOR/ACTION</th>
-            <th>MON</th>
-            <th>TUES</th>
-            <th>WEDS</th>
-            <th>THURS</th>
-            <th>FRI</th>
-            <th>SAT</th>
-            <th>SUN</th>
-            <th>ACHIEVED</th>
-            <th>GOAL</th>
-            <th>NET</th>
-            <th></th>
+            <th>MON</th><th>TUES</th><th>WEDS</th><th>THURS</th><th>FRI</th><th>SAT</th><th>SUN</th>
+            <th>ACHIEVED</th><th>GOAL</th><th>NET</th><th></th>
           </tr>
         </thead>
+
         <tbody id="rhythm-body"></tbody>
 
         <tfoot>
           <tr class="total-row">
             <td>TOTAL</td>
-            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-            <td id="total-achieved">0</td>
-            <td id="total-goal">0</td>
-            <td id="total-net">0</td>
+            <td></td><td></td><td></td><td></td>
+            <td></td><td></td><td></td>
+            <td id="total-achieved" class="number-cell">0</td>
+            <td id="total-goal" class="number-cell">0</td>
+            <td id="total-net" class="number-cell">0</td>
             <td></td>
           </tr>
         </tfoot>
       </table>
     </div>
 
-    <button type="button" id="add-row-btn" class="btn btn-secondary" style="margin-top:12px;">Rij toevoegen</button>
+    <div class="button-row" style="margin-top:12px;">
+      <button type="button" id="add-row-btn" class="btn btn-secondary">Rij toevoegen</button>
+    </div>
 
-    <div class="date-range-row" style="margin-top:24px;">
-      <span>Date Range:</span>
-      <input type="date" id="rhythm-from" class="small-date-input">
-      <span>–</span>
-      <input type="date" id="rhythm-to" class="small-date-input">
+    <p class="quote" style="margin-top:24px;">
+      Commitment is doing what you said you would do long after the mood you said it in has left you.
+    </p>
+
+    <div class="form-grid-two" style="margin-top:24px;">
+      <div>
+        <label for="rhythm-from">FROM</label>
+        <input type="date" id="rhythm-from">
+      </div>
+      <div>
+        <label for="rhythm-to">TO (DATES)</label>
+        <input type="date" id="rhythm-to">
+      </div>
     </div>
 
     <div class="form-actions">
@@ -66,202 +72,159 @@
       <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
     </div>
 
-    <p class="form-note" id="save-status"></p>
+    <p id="save-status" class="form-note"></p>
   </form>
-
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="firebase-config.js"></script>
-
 <script>
+const idEl=document.getElementById("rhythm-id");
+const fromEl=document.getElementById("rhythm-from");
+const toEl=document.getElementById("rhythm-to");
+const bodyEl=document.getElementById("rhythm-body");
+const statusEl=document.getElementById("save-status");
 
-// ------------------------------------------------------------
-// Utility
-// ------------------------------------------------------------
-function computeId(from, to) {
-  return `${from}_${to}`;
+function storageLoad(){
+  return JSON.parse(localStorage.getItem("rhythms") || "[]");
 }
 
-// ------------------------------------------------------------
-// Elements
-// ------------------------------------------------------------
-const bodyEl = document.getElementById("rhythm-body");
-const fromEl = document.getElementById("rhythm-from");
-const toEl = document.getElementById("rhythm-to");
-const idEl = document.getElementById("rhythm-id");
-const statusEl = document.getElementById("save-status");
+function storageSave(list){
+  localStorage.setItem("rhythms", JSON.stringify(list));
+}
 
-const totalAchievedEl = document.getElementById("total-achieved");
-const totalGoalEl = document.getElementById("total-goal");
-const totalNetEl = document.getElementById("total-net");
+function rhythmId(from,to){ return `${from}_${to}_rhythm`; }
 
-// ------------------------------------------------------------
-// Row creation & updates
-// ------------------------------------------------------------
-function createRow(initial) {
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td><input type="text" class="behavior-input" value="${initial?.behavior || ""}"></td>
-    <td><input type="checkbox" class="day-mon"></td>
-    <td><input type="checkbox" class="day-tues"></td>
-    <td><input type="checkbox" class="day-weds"></td>
-    <td><input type="checkbox" class="day-thurs"></td>
-    <td><input type="checkbox" class="day-fri"></td>
-    <td><input type="checkbox" class="day-sat"></td>
-    <td><input type="checkbox" class="day-sun"></td>
-    <td class="achieved-cell">0</td>
-    <td><input type="number" class="goal-cell" min="0" max="7" value="${initial?.goal || 0}"></td>
-    <td class="net-cell">0</td>
+function createRow(initial={}){
+  const tr=document.createElement("tr");
+  tr.innerHTML=`
+    <td><input type="text" class="behavior-input" value="${initial.behavior||""}"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-mon"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-tues"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-weds"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-thurs"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-fri"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-sat"></td>
+    <td class="checkbox-cell"><input type="checkbox" class="day-sun"></td>
+
+    <td class="number-cell achieved-cell">0</td>
+    <td><input type="number" class="goal-cell" value="${initial.goal||0}" min="0" max="7"></td>
+    <td class="number-cell net-cell">0</td>
+
     <td><button type="button" class="icon-btn delete-row-btn">🗑</button></td>
   `;
 
-  if (initial) {
-    tr.querySelector(".day-mon").checked = initial.mon;
-    tr.querySelector(".day-tues").checked = initial.tues;
-    tr.querySelector(".day-weds").checked = initial.weds;
-    tr.querySelector(".day-thurs").checked = initial.thurs;
-    tr.querySelector(".day-fri").checked = initial.fri;
-    tr.querySelector(".day-sat").checked = initial.sat;
-    tr.querySelector(".day-sun").checked = initial.sun;
-  }
-
-  tr.querySelectorAll("input[type='checkbox']").forEach(cb => {
-    cb.addEventListener("change", () => { updateRow(tr); updateTotals(); });
+  ["mon","tues","weds","thurs","fri","sat","sun"].forEach(d=>{
+    if(initial[d]) tr.querySelector(`.day-${d}`).checked=true;
   });
 
-  tr.querySelector(".goal-cell").addEventListener("input", () => { updateRow(tr); updateTotals(); });
+  tr.querySelectorAll("input").forEach(el=>{
+    el.addEventListener("input", ()=>{updateRow(tr);updateTotals();});
+  });
 
-  tr.querySelector(".delete-row-btn").addEventListener("click", () => {
+  tr.querySelector(".delete-row-btn").onclick=()=>{
     tr.remove();
     updateTotals();
-  });
+  };
 
   updateRow(tr);
   bodyEl.appendChild(tr);
 }
 
-function updateRow(tr) {
-  const checks = tr.querySelectorAll("input[type='checkbox']");
-  let achieved = 0;
-  checks.forEach(cb => { if (cb.checked) achieved++; });
+function updateRow(tr){
+  const checks=tr.querySelectorAll("input[type='checkbox']");
+  let achieved=0;
+  checks.forEach(c=>achieved+=c.checked?1:0);
 
-  tr.querySelector(".achieved-cell").textContent = achieved;
+  tr.querySelector(".achieved-cell").textContent=achieved;
 
-  const goal = Number(tr.querySelector(".goal-cell").value || 0);
-  const net = achieved - goal;
+  const goal=Number(tr.querySelector(".goal-cell").value||0);
+  const net=achieved-goal;
 
-  const netCell = tr.querySelector(".net-cell");
-  netCell.textContent = net;
-  netCell.classList.toggle("negative", net < 0);
+  const netCell=tr.querySelector(".net-cell");
+  netCell.textContent=net;
+  netCell.classList.toggle("negative",net<0);
 }
 
-function updateTotals() {
-  let achieved = 0, goal = 0, net = 0;
-
-  bodyEl.querySelectorAll("tr").forEach(tr => {
-    achieved += Number(tr.querySelector(".achieved-cell").textContent || 0);
-    goal += Number(tr.querySelector(".goal-cell").value || 0);
-    net += Number(tr.querySelector(".net-cell").textContent || 0);
+function updateTotals(){
+  let achieved=0,goal=0,net=0;
+  bodyEl.querySelectorAll("tr").forEach(tr=>{
+    achieved+=Number(tr.querySelector(".achieved-cell").textContent);
+    goal+=Number(tr.querySelector(".goal-cell").value);
+    net+=Number(tr.querySelector(".net-cell").textContent);
   });
 
-  totalAchievedEl.textContent = achieved;
-  totalGoalEl.textContent = goal;
-  totalNetEl.textContent = net;
-  totalNetEl.classList.toggle("negative", net < 0);
+  document.getElementById("total-achieved").textContent=achieved;
+  document.getElementById("total-goal").textContent=goal;
+  document.getElementById("total-net").textContent=net;
 }
 
-// ------------------------------------------------------------
-// Load from Firestore
-// ------------------------------------------------------------
-async function loadIfExists() {
-  const from = fromEl.value;
-  const to = toEl.value;
-  if (!from || !to) return;
+function loadExisting(){
+  const params=new URLSearchParams(location.search);
+  const id=params.get("id");
+  if(!id){ createRow(); return; }
 
-  const docId = computeId(from, to);
-  idEl.value = docId;
+  const list=storageLoad();
+  const item=list.find(x=>x.id===id);
 
-  const doc = await db.collection("rhythms").doc(docId).get();
-  if (!doc.exists) return;
+  if(!item){ createRow(); return; }
 
-  const data = doc.data();
+  idEl.value=item.id;
+  fromEl.value=item.from;
+  toEl.value=item.to;
 
-  bodyEl.innerHTML = "";
-  (data.rows || []).forEach(r => createRow(r));
+  bodyEl.innerHTML="";
+  item.rows.forEach(r=>createRow(r));
 
   updateTotals();
 }
 
-// ------------------------------------------------------------
-// Save to Firestore
-// ------------------------------------------------------------
-async function saveRhythm() {
-  const from = fromEl.value;
-  const to = toEl.value;
+function saveRhythm(){
+  const from=fromEl.value;
+  const to=toEl.value;
 
-  if (!from || !to) {
-    alert("Vul een geldige date range in.");
+  if(!from||!to){
+    alert("Vul FROM en TO in.");
     return;
   }
 
-  const rows = [];
-  bodyEl.querySelectorAll("tr").forEach(tr => {
-    const behavior = tr.querySelector(".behavior-input").value.trim();
-    if (!behavior) return;
+  const rows=[];
+  bodyEl.querySelectorAll("tr").forEach(tr=>{
+    const behavior=tr.querySelector(".behavior-input").value.trim();
+    if(!behavior) return;
 
     rows.push({
       behavior,
-      mon: tr.querySelector(".day-mon").checked,
-      tues: tr.querySelector(".day-tues").checked,
-      weds: tr.querySelector(".day-weds").checked,
-      thurs: tr.querySelector(".day-thurs").checked,
-      fri: tr.querySelector(".day-fri").checked,
-      sat: tr.querySelector(".day-sat").checked,
-      sun: tr.querySelector(".day-sun").checked,
-      goal: Number(tr.querySelector(".goal-cell").value || 0)
+      mon:tr.querySelector(".day-mon").checked,
+      tues:tr.querySelector(".day-tues").checked,
+      weds:tr.querySelector(".day-weds").checked,
+      thurs:tr.querySelector(".day-thurs").checked,
+      fri:tr.querySelector(".day-fri").checked,
+      sat:tr.querySelector(".day-sat").checked,
+      sun:tr.querySelector(".day-sun").checked,
+      goal:Number(tr.querySelector(".goal-cell").value)
     });
   });
 
-  const docId = computeId(from, to);
-  idEl.value = docId;
+  const id=rhythmId(from,to);
+  idEl.value=id;
 
-  await db.collection("rhythms").doc(docId).set({
-    id: docId,
-    fromDate: from,
-    toDate: to,
+  const list=storageLoad().filter(x=>x.id!==id);
+  list.push({
+    id,
+    from,
+    to,
     rows,
-    createdAt: new Date().toISOString()
+    created:Date.now()
   });
 
-  statusEl.textContent = "Rhythm opgeslagen in Firestore.";
+  storageSave(list);
+  statusEl.textContent="Rhythm opgeslagen.";
 }
 
-// ------------------------------------------------------------
-// Listeners
-// ------------------------------------------------------------
-document.getElementById("add-row-btn").addEventListener("click", () => {
-  createRow();
-  updateTotals();
-});
+document.getElementById("add-row-btn").onclick=()=>createRow();
+document.getElementById("rhythm-form").onsubmit=e=>{e.preventDefault();saveRhythm();};
+document.getElementById("print-btn").onclick=()=>window.print();
 
-document.getElementById("rhythm-from").addEventListener("change", loadIfExists);
-document.getElementById("rhythm-to").addEventListener("change", loadIfExists);
-
-document.getElementById("rhythm-form").addEventListener("submit", async e => {
-  e.preventDefault();
-  await saveRhythm();
-});
-
-document.getElementById("print-btn").addEventListener("click", () => window.print());
-
-// ------------------------------------------------------------
-// Init (blank start row)
-// ------------------------------------------------------------
-createRow();
-updateTotals();
-
+loadExisting();
 </script>
 
 </body>

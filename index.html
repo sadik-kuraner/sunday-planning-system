@@ -6,34 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 <div class="container">
   <h1>Weekplanning Overzicht</h1>
   <p class="subtitle">Kies welk formulier je wil invullen of bekijk eerdere weken.</p>
-
-  <div class="button-row" style="margin-bottom:16px;">
-    <button class="btn btn-secondary" id="export-btn">Exporteren</button>
-    <label for="import-file" class="btn btn-secondary">Importeren</label>
-    <input type="file" id="import-file" accept="application/json" style="display:none">
-  </div>
-
-  <p class="form-note" id="backup-status"></p>
-
   <div class="cards-row">
     <div class="card">
       <div class="card-header-line">
-        <span class="card-icon">📅</span> <span>Sunday Planning System</span>
+        <span class="card-icon">📅</span>
+        <span>Sunday Planning System</span>
       </div>
       <p class="card-text">Plan je week met missie, doelen en afleiders.</p>
       <div class="button-row">
         <a href="sunday.html" class="btn btn-primary">Start Planning</a>
       </div>
     </div>
-
     <div class="card">
       <div class="card-header-line">
-        <span class="card-icon">📊</span> <span>Weekly Rhythm Register</span>
+        <span class="card-icon">📊</span>
+        <span>Weekly Rhythm Register</span>
       </div>
       <p class="card-text">Track dagelijkse gedragingen en acties.</p>
       <div class="button-row">
@@ -41,85 +32,63 @@
       </div>
     </div>
   </div>
-
   <h2 class="section-title-row">Opgeslagen Sunday Plannings</h2>
   <div id="planning-list" class="saved-list"></div>
-
   <h2 class="section-title-row">Opgeslagen Rhythm Registers</h2>
   <div id="rhythm-list" class="saved-list"></div>
 </div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="firebase-config.js"></script>
-
 <script>
-function shorten(t, m) { return (!t || t.length <= m) ? t : t.slice(0,m)+"…"; }
-function formatRange(a,b){ return a && b ? `Week ${a} - ${b}` : ""; }
-
-function renderPlannings(plans) {
+function shorten(t, m) { return t.length <= m ? t : t.slice(0, m) + "…"; }
+function formatRange(a,b){ return a && b ? `Week ${a} – ${b}` : ""; }
+function loadPlans() { return JSON.parse(localStorage.getItem("sunday_plans") || "[]"); }
+function loadRhythms() { return JSON.parse(localStorage.getItem("rhythms") || "[]"); }
+function renderPlannings() {
   const list = document.getElementById("planning-list");
   list.innerHTML = "";
-
-  plans.forEach(doc => {
-    const p = doc.data();
+  const items = loadPlans().sort((a,b) => b.created - a.created);
+  items.forEach(p => {
     const card = document.createElement("div");
     card.className = "card";
-
     card.innerHTML = `
-      <div class="saved-card-title">${formatRange(p.fromDate,p.toDate)}</div>
-      <div class="saved-card-sub">Opgeslagen op ${new Date(p.createdAt).toLocaleString()}</div>
-      <div class="saved-card-body">${shorten(p.mission,120)}</div>
+      <div class="saved-card-title">${formatRange(p.from, p.to)}</div>
+      <div class="saved-card-sub">${new Date(p.created).toLocaleString()}</div>
+      <div class="saved-card-body">${shorten(p.mission || "",120)}</div>
       <div class="button-row">
-        <a href="sunday.html?id=${doc.id}" class="btn btn-secondary">Openen</a>
-        <button class="btn btn-ghost" data-id="${doc.id}">Verwijderen</button>
-      </div>
-    `;
-
-    card.querySelector("button").onclick = async () => {
-      await db.collection("sunday_plans").doc(doc.id).delete();
+        <a href="sunday.html?id=${p.id}" class="btn btn-secondary">Openen</a>
+        <button class="btn btn-ghost" data-id="${p.id}">Verwijderen</button>
+      </div>`;
+    card.querySelector("button").onclick = () => {
+      const updated = loadPlans().filter(x => x.id !== p.id);
+      localStorage.setItem("sunday_plans", JSON.stringify(updated));
+      renderPlannings();
     };
-
     list.appendChild(card);
   });
 }
-
-db.collection("sunday_plans")
-  .orderBy("createdAt","desc")
-  .onSnapshot(snap => renderPlannings(snap.docs));
-
-
-function renderRhythms(items) {
+function renderRhythms() {
   const list = document.getElementById("rhythm-list");
   list.innerHTML = "";
-
-  items.forEach(doc => {
-    const r = doc.data();
-
+  const items = loadRhythms().sort((a,b) => b.created - a.created);
+  items.forEach(r => {
     const card = document.createElement("div");
     card.className = "card";
-
     card.innerHTML = `
-      <div class="saved-card-title">${formatRange(r.fromDate,r.toDate)}</div>
-      <div class="saved-card-sub">${r.rows.length} gedragingen • ${new Date(r.createdAt).toLocaleString()}</div>
+      <div class="saved-card-title">${formatRange(r.from, r.to)}</div>
+      <div class="saved-card-sub">${r.rows.length} gedragingen • ${new Date(r.created).toLocaleString()}</div>
       <div class="button-row">
-        <a href="rhythm.html?id=${doc.id}" class="btn btn-secondary">Openen</a>
-        <button class="btn btn-ghost" data-id="${doc.id}">Verwijderen</button>
-      </div>
-    `;
-
-    card.querySelector("button").onclick = async () => {
-      await db.collection("rhythms").doc(doc.id).delete();
+        <a href="rhythm.html?id=${r.id}" class="btn btn-secondary">Openen</a>
+        <button class="btn btn-ghost" data-id="${r.id}">Verwijderen</button>
+      </div>`;
+    card.querySelector("button").onclick = () => {
+      const updated = loadRhythms().filter(x => x.id !== r.id);
+      localStorage.setItem("rhythms", JSON.stringify(updated));
+      renderRhythms();
     };
-
     list.appendChild(card);
   });
 }
-
-db.collection("rhythms")
-  .orderBy("createdAt","desc")
-  .onSnapshot(snap => renderRhythms(snap.docs));
-
+renderPlannings();
+renderRhythms();
 </script>
 </body>
 </html>
