@@ -1,47 +1,19 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <title>Sunday Planning System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="container">
-  <div class="back-row">
-    <a href="index.html" class="back-link">← Terug naar overzicht</a>
+<!DOCTYPE html> <html lang="nl"> <head> <meta charset="UTF-8"> <title>Sunday Planning System</title> <meta name="viewport" content="width=device-width, initial-scale=1"> <link rel="stylesheet" href="style.css"> </head> <body> <div class="container"> <div class="back-row"> <a href="index.html" class="back-link">← Terug naar overzicht</a> </div> <h2 class="page-title">Sunday Planning System</h2> <p class="page-subtitle"></p> <form id="planning-form"> <input type="hidden" id="planning-id">
+<div class="form-grid-two">
+  <div>
+    <label>FROM</label>
+    <input type="date" id="planning-from">
   </div>
-  <h2 class="page-title">Sunday Planning System</h2>
-  <p class="page-subtitle"></p>
+  <div>
+    <label>TO (DATES)</label>
+    <input type="date" id="planning-to">
+  </div>
+</div>
 
-  <form id="planning-form">
-    <input type="hidden" id="planning-id">
-    <div class="form-grid-two">
-      <div>
-        <label>FROM</label>
-        <input type="date" id="planning-from">
-      </div>
-      <div>
-        <label>TO (DATES)</label>
-        <input type="date" id="planning-to">
-      </div>
-    </div>
+<label style="margin-top:16px;">MISSION</label>
+<textarea id="planning-mission"></textarea>
 
-    <label style="margin-top:16px;">MISSION</label>
-    <textarea id="planning-mission"></textarea>
-
-    <div class="form-grid-two" style="margin-top:16px;">
-      <div>
-        <label>GOAL #1</label>
-        <textarea id="planning-goal1"></textarea>
-      </div>
-      <div>
-        <label>GOAL #2</label>
-        <textarea id="planning-goal2"></textarea>
-      </div>
-    </div>
-
-    <div class="form-grid-two" style="margin-top:16px;">
+<div class="form-grid-two" style="margin-top:16px;">
   <div>
     <label>GOAL #1: Leren coderen en automatiseren</label>
     <textarea id="planning-goal1"></textarea>
@@ -52,100 +24,22 @@
   </div>
 </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Opslaan</button>
-      <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
-    </div>
-
-    <p id="save-status" class="form-note"></p>
-  </form>
+<div class="form-grid-two" style="margin-top:16px;">
+  <div>
+    <label>GOAL #3</label>
+    <textarea id="planning-goal3"></textarea>
+  </div>
+  <div>
+    <label>DEVIL'S VORTEX</label>
+    <textarea id="planning-devils"></textarea>
+  </div>
 </div>
 
-<script>
-const idEl=document.getElementById("planning-id");
-const fromEl=document.getElementById("planning-from");
-const toEl=document.getElementById("planning-to");
-const missionEl=document.getElementById("planning-mission");
-const g1=document.getElementById("planning-goal1");
-const g2=document.getElementById("planning-goal2");
-const g3=document.getElementById("planning-goal3");
-const devilsEl=document.getElementById("planning-devils");
-const statusEl=document.getElementById("save-status");
-const subtitleEl=document.querySelector(".page-subtitle");
+<div class="form-actions">
+  <button type="submit" class="btn btn-primary">Opslaan</button>
+  <button type="button" id="print-btn" class="btn btn-secondary">Printen</button>
+</div>
 
-function docId(from,to){ return `${from}_${to}` }
+<p id="save-status" class="form-note"></p>
 
-function loadPlans(){
-  return JSON.parse(localStorage.getItem("sunday_plans") || "[]");
-}
-
-function savePlans(list){
-  localStorage.setItem("sunday_plans", JSON.stringify(list));
-}
-
-function loadExisting(){
-  const params = new URLSearchParams(location.search);
-  const id = params.get("id");
-  if(!id) return;
-
-  const plans = loadPlans();
-  const p = plans.find(x => x.id === id);
-  if(!p) return;
-
-  idEl.value = p.id;
-  fromEl.value = p.from;
-  toEl.value = p.to;
-  missionEl.value = p.mission;
-  g1.value = p.goal1;
-  g2.value = p.goal2;
-  g3.value = p.goal3;
-  devilsEl.value = p.devils;
-
-  subtitleEl.textContent = `Bewerken van week ${p.from} – ${p.to}`;
-}
-
-function savePlan(){
-  const from = fromEl.value;
-  const to   = toEl.value;
-  const mission = missionEl.value.trim();
-
-  if(!from || !to || !mission){
-    alert("FROM, TO en MISSION zijn verplicht.");
-    return;
-  }
-
-  const id = docId(from,to);
-  idEl.value = id;
-
-  const plans = loadPlans().filter(p => p.id !== id);
-
-  plans.push({
-    id,
-    from,
-    to,
-    mission,
-    goal1: g1.value,
-    goal2: g2.value,
-    goal3: g3.value,
-    devils: devilsEl.value,
-    created: Date.now()
-  });
-
-  savePlans(plans);
-
-  statusEl.textContent = "Planning opgeslagen.";
-  subtitleEl.textContent = `Bewerken van week ${from} – ${to}`;
-}
-
-document.getElementById("planning-form").addEventListener("submit", e=>{
-  e.preventDefault();
-  savePlan();
-});
-
-document.getElementById("print-btn").onclick = () => window.print();
-
-loadExisting();
-</script>
-
-</body>
-</html>
+</form> </div> <script> const idEl=document.getElementById("planning-id"); const fromEl=document.getElementById("planning-from"); const toEl=document.getElementById("planning-to"); const missionEl=document.getElementById("planning-mission"); const g1=document.getElementById("planning-goal1"); const g2=document.getElementById("planning-goal2"); const g3=document.getElementById("planning-goal3"); const devilsEl=document.getElementById("planning-devils"); const statusEl=document.getElementById("save-status"); const subtitleEl=document.querySelector(".page-subtitle"); function docId(from,to){ return `${from}_${to}` } function loadPlans(){ return JSON.parse(localStorage.getItem("sunday_plans") || "[]"); } function savePlans(list){ localStorage.setItem("sunday_plans", JSON.stringify(list)); } function loadExisting(){ const params = new URLSearchParams(location.search); const id = params.get("id"); if(!id) return; const plans = loadPlans(); const p = plans.find(x => x.id === id); if(!p) return; idEl.value = p.id; fromEl.value = p.from; toEl.value = p.to; missionEl.value = p.mission; g1.value = p.goal1; g2.value = p.goal2; g3.value = p.goal3; devilsEl.value = p.devils; subtitleEl.textContent = `Bewerken van week ${p.from} – ${p.to}`; } function savePlan(){ const from = fromEl.value; const to = toEl.value; const mission = missionEl.value.trim(); if(!from || !to || !mission){ alert("FROM, TO en MISSION zijn verplicht."); return; } const id = docId(from,to); idEl.value = id; const plans = loadPlans().filter(p => p.id !== id); plans.push({ id, from, to, mission, goal1: g1.value, goal2: g2.value, goal3: g3.value, devils: devilsEl.value, created: Date.now() }); savePlans(plans); statusEl.textContent = "Planning opgeslagen."; subtitleEl.textContent = `Bewerken van week ${from} – ${to}`; } document.getElementById("planning-form").addEventListener("submit", e=>{ e.preventDefault(); savePlan(); }); document.getElementById("print-btn").onclick = () => window.print(); loadExisting(); </script> </body> </html>
